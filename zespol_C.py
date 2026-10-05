@@ -8,8 +8,34 @@ from datetime import date
 import threading
 import time
 import random
+import functools
+import json
 
 LIMIT_DZIENNY_WYPLAT = Decimal("5000")
+
+def niezawodnosc_logger(log_path="awarie.jsonl"):
+  def dekorator(funkcja):
+    @functools.wraps (funkcja)
+    def wrapper(*args, ** kwargs) :
+      start = time.time()
+      try:
+         wynik = funkcja(*args, ** kwargs)
+         return wynik
+      except Exception as e:
+        wpis = {
+           "timestamp": time.time(),
+           "funkcja": funkcja .__name__,
+           "args": repr(args),
+           "kwargs": repr(kwargs),
+           "typ_bledu": type(e).__name__,
+           "komunikat": str(e),
+           "czas_do_awarii_s": time.time() - start,
+            }
+        with open(log_path, "a", encoding="utf-8") as f:
+         f.write(json.dumps (wpis) + "\n")
+        raise
+    return wrapper
+  return dekorator
 
 
 class KontoNieIstnieje(Exception):
@@ -54,6 +80,7 @@ class KontoZablokowane(Exception):
 
 
 class Konto:
+    @niezawodnosc_logger()
     def __init__(self, numer, wlasciciel, saldo_poczatkowe=0):
         self.numer = numer
         self.wlasciciel = wlasciciel
@@ -61,6 +88,7 @@ class Konto:
         self.historia = []
         self.status = "aktywne"
 
+    @niezawodnosc_logger()
     def dodaj_wpis(self, typ, kwota, data_operacji=None):
         if data_operacji is None:
             data_operacji = date.today()
@@ -68,11 +96,13 @@ class Konto:
 
 
 class BankSystem:
+    @niezawodnosc_logger()
     def __init__(self):
         self.konta = {}
         self._lock = threading.Lock()
 
     @staticmethod
+    @niezawodnosc_logger()
     def _numer_poprawny(numer):
         if not isinstance(numer, str) or len(numer) != 10 or not numer.isdigit():
             return False
@@ -80,6 +110,7 @@ class BankSystem:
         suma_kontrolna = sum(cyfry[:9]) % 10
         return cyfry[9] == suma_kontrolna
 
+    @niezawodnosc_logger()
     def utworz_konto(self, numer, wlasciciel, saldo_poczatkowe=0):
         if not self._numer_poprawny(numer):
             raise ValueError("Nieprawidlowy numer konta")
@@ -89,19 +120,23 @@ class BankSystem:
         self.konta[numer] = konto
         return konto
 
+    @niezawodnosc_logger()
     def _pobierz_konto(self, numer):
         if numer not in self.konta:
             raise KontoNieIstnieje(f"Konto {numer} nie istnieje")
         return self.konta[numer]
-
+    
+    @niezawodnosc_logger()
     def zablokuj_konto(self, numer):
         konto = self._pobierz_konto(numer)
         konto.status = "zablokowane"
-
+    
+    @niezawodnosc_logger()
     def odblokuj_konto(self, numer):
         konto = self._pobierz_konto(numer)
         konto.status = "aktywne"
-
+    
+    @niezawodnosc_logger()
     def _suma_dzisiejszych_wyplat(self, konto):
         dzis = date.today()
         suma = Decimal("0")
@@ -109,7 +144,8 @@ class BankSystem:
             if data_operacji == dzis and typ in ("wyplata", "przelew_wychodzacy"):
                 suma += kwota
         return suma
-
+    
+    @niezawodnosc_logger()
     def wplac(self, numer, kwota):
         konto = self._pobierz_konto(numer)
         if not isinstance(kwota, (int, float, Decimal)):
@@ -120,7 +156,8 @@ class BankSystem:
         konto.saldo += kwota
         konto.dodaj_wpis("wplata", kwota)
         return konto.saldo
-
+    
+    @niezawodnosc_logger()
     def wyplac(self, numer, kwota):
         konto = self._pobierz_konto(numer)
         if konto.status == "zablokowane":
@@ -135,7 +172,8 @@ class BankSystem:
         konto.saldo -= kwota
         konto.dodaj_wpis("wyplata", kwota)
         return konto.saldo
-
+    
+    @niezawodnosc_logger()
     def przelew(self, numer_z, numer_do, kwota):
         konto_z = self._pobierz_konto(numer_z)
         konto_do = self.konta[numer_do]
@@ -154,7 +192,8 @@ class BankSystem:
             konto_z.dodaj_wpis("przelew_wychodzacy", kwota)
             konto_do.dodaj_wpis("przelew_przychodzacy", kwota)
         return konto_z.saldo
-
+    
+    @niezawodnosc_logger()
     def nalicz_odsetki(self, numer, roczna_stopa_procentowa, miesiace):
         konto = self._pobierz_konto(numer)
         stopa_miesieczna = Decimal(str(roczna_stopa_procentowa)) / Decimal("12") / Decimal("100")
@@ -163,7 +202,8 @@ class BankSystem:
             konto.saldo += odsetki
             konto.dodaj_wpis("odsetki", odsetki)
         return konto.saldo
-
+    
+    @niezawodnosc_logger()
     def historia_w_okresie(self, numer, od, do):
         konto = self._pobierz_konto(numer)
         wynik = []
@@ -171,7 +211,8 @@ class BankSystem:
             if od < data_operacji < do:
                 wynik.append((data_operacji, typ, kwota))
         return wynik
-
+    
+    @niezawodnosc_logger()
     def wyciag_miesieczny(self, numer, rok, miesiac):
         konto = self._pobierz_konto(numer)
         wplaty = Decimal("0")
@@ -183,7 +224,8 @@ class BankSystem:
                 elif typ in ("wyplata", "przelew_wychodzacy"):
                     wyplaty += kwota
         return {"wplaty": wplaty, "wyplaty": wyplaty, "saldo_koncowe": konto.saldo}
-
+    
+    @niezawodnosc_logger()
     def przelew_zewnetrzny(self, numer_z, numer_konta_docelowego_zewn, kwota, procesor=None):
         """
         Przelew na konto spoza systemu (np. do innego banku), realizowany
@@ -205,3 +247,4 @@ class BankSystem:
         konto_z.saldo -= kwota
         konto_z.dodaj_wpis("przelew_zewnetrzny", kwota)
         return wynik
+
