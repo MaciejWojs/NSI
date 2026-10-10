@@ -23,7 +23,6 @@
             },
             "group": {
                 "kind": "test",
-                "isDefault": true
             }
         },
         {
@@ -75,6 +74,24 @@
             },
             "dependsOn": "Build docker image",
             "group": "build",
-        }
+        },
+        {
+            "label": "run tests in docker container",
+            "type": "shell",
+            "command": "docker run --rm --tty --name NSI-tests nsi-c uv run pytest",
+            "problemMatcher": [],
+            "runOptions": {
+                "instanceLimit": 1,
+                "instancePolicy": "terminateNewest",
+            },
+            "presentation": {
+                "reveal": "always",
+                "focus": true,
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "dependsOn": "Build docker image",
+            "group": "test",
+        },
     ]
 }
