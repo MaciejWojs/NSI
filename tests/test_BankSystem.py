@@ -1,6 +1,6 @@
 import pytest
 
-from API import BankSystem, KontoNieIstnieje
+from API import BankSystem, KontoNieIstnieje, KontoZablokowane
 
 
 def test_BankSystem():
@@ -14,7 +14,7 @@ def setup_module():
     numer_konta_drugiego = "1111111119"
     bs = BankSystem()
     bs.utworz_konto(numer_konta_pierwszego, "John Doe", 1000)
-    bs.utworz_konto(numer_konta_drugiego, "Johnathan Johnson", 1000)
+    bs.utworz_konto(numer_konta_drugiego, "Johnathan Johnson", 7000)
     yield {
         "nr_konta1": numer_konta_pierwszego,
         "nr_konta2": numer_konta_drugiego,
@@ -26,20 +26,38 @@ def setup_module():
 def test_BankSystem_utworz_konto(setup_module):
     bs = setup_module["bs"]
     numer = setup_module["nr_konta1"]
-    
+
     with pytest.raises(ValueError):
         bs.utworz_konto("1234567896", "John Doe", 1000)
     with pytest.raises(ValueError):
         bs.utworz_konto(numer, "John Doe", 1000)
 
+
 def test_BankSystem_wyplac(setup_module):
     bs = setup_module["bs"]
-    assert bs.wyplac(setup_module["nr_konta1"], 100) == 900
+    nr1 = setup_module["nr_konta1"]
+    nr2 = setup_module["nr_konta2"]
+    assert bs.wyplac(nr1, 100) == 900
+
+    try:
+        bs.zablokuj_konto(nr1)
+        with pytest.raises(KontoZablokowane, match=f"Konto {nr1} jest zablokowane"):
+            bs.wyplac(nr1, 100)
+    finally:
+        bs.odblokuj_konto(nr1)
+
+    with pytest.raises(ValueError, match="Kwota wyplaty musi byc dodatnia"):
+        bs.wyplac(nr2, -100)
+    with pytest.raises(ValueError, match="Niewystarczajace srodki na koncie"):
+        bs.wyplac(nr2, 10000)
+    with pytest.raises(ValueError, match="Przekroczono dzienny limit wyplat"):
+        bs.wyplac(nr2, 6500)
 
 
 def test_BankSystem_wplac(setup_module):
     bs = setup_module["bs"]
-    assert bs.wplac(setup_module["nr_konta1"], 200) == 1100
+    nr1 = setup_module["nr_konta1"]
+    assert bs.wplac(nr1, 200) == 1100
 
 
 def test_BankSystem_przelew(setup_module):
@@ -48,7 +66,7 @@ def test_BankSystem_przelew(setup_module):
     nr2 = setup_module["nr_konta2"]
 
     assert bs.przelew(nr1, nr2, 100) == 1000
-    assert bs.konta[nr2].saldo == 1100
+    assert bs.konta[nr2].saldo == 7100
 
 
 def test_BankSystem_pobierz_konto(setup_module):
@@ -115,6 +133,7 @@ def test_BankSystem_przelew_nieistniejace_konto(setup_module):
     nr2 = "1234567897"
     with pytest.raises(KontoNieIstnieje):
         bs.przelew(nr1, nr2, 100)
+
 
 def test_numer_poprawny(setup_module):
     bs = setup_module["bs"]
