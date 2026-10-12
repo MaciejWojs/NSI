@@ -106,3 +106,12 @@ def test_BankSystem_przelew_nieistniejace_konto(setup_module):
     nr2 = "1234567897"
     with pytest.raises(KontoNieIstnieje):
         bs.przelew(nr1, nr2, 100)
+
+def test_numer_poprawny(setup_module):
+    bs = setup_module["bs"]
+    numer = setup_module["nr_konta1"]
+    assert bs._numer_poprawny(numer) is True
+    assert bs._numer_poprawny("1234567896") is False
+    assert bs._numer_poprawny(1234567895) is False
+    assert bs._numer_poprawny("1234") is False
+    assert bs._numer_poprawny("abcdefghij") is False
