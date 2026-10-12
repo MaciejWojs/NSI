@@ -1,5 +1,6 @@
-from API import BankSystem, KontoNieIstnieje
 import pytest
+
+from API import BankSystem, KontoNieIstnieje
 
 
 def test_BankSystem():
@@ -19,7 +20,7 @@ def setup_module():
         "nr_konta2": numer_konta_drugiego,
         "bs": bs,
     }
-    print("Teardown module")
+    print("Testy zakończone")
 
 
 def test_BankSystem_wyplac(setup_module):
