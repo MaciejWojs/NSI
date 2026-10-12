@@ -23,6 +23,15 @@ def setup_module():
     print("Testy zakończone")
 
 
+def test_BankSystem_utworz_konto(setup_module):
+    bs = setup_module["bs"]
+    numer = setup_module["nr_konta1"]
+    
+    with pytest.raises(ValueError):
+        bs.utworz_konto("1234567896", "John Doe", 1000)
+    with pytest.raises(ValueError):
+        bs.utworz_konto(numer, "John Doe", 1000)
+
 def test_BankSystem_wyplac(setup_module):
     bs = setup_module["bs"]
     assert bs.wyplac(setup_module["nr_konta1"], 100) == 900
