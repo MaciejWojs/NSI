@@ -13,38 +13,43 @@ import json
 
 LIMIT_DZIENNY_WYPLAT = Decimal("5000")
 
+
 def niezawodnosc_logger(log_path="awarie.jsonl"):
-  def dekorator(funkcja):
-    @functools.wraps (funkcja)
-    def wrapper(*args, ** kwargs) :
-      start = time.time()
-      try:
-         wynik = funkcja(*args, ** kwargs)
-         return wynik
-      except Exception as e:
-        wpis = {
-           "timestamp": time.time(),
-           "funkcja": funkcja .__name__,
-           "args": repr(args),
-           "kwargs": repr(kwargs),
-           "typ_bledu": type(e).__name__,
-           "komunikat": str(e),
-           "czas_do_awarii_s": time.time() - start,
-            }
-        with open(log_path, "a", encoding="utf-8") as f:
-         f.write(json.dumps (wpis) + "\n")
-        raise
-    return wrapper
-  return dekorator
+    def dekorator(funkcja):
+        @functools.wraps(funkcja)
+        def wrapper(*args, **kwargs):
+            start = time.time()
+            try:
+                wynik = funkcja(*args, **kwargs)
+                return wynik
+            except Exception as e:
+                wpis = {
+                    "timestamp": time.time(),
+                    "funkcja": funkcja.__name__,
+                    "args": repr(args),
+                    "kwargs": repr(kwargs),
+                    "typ_bledu": type(e).__name__,
+                    "komunikat": str(e),
+                    "czas_do_awarii_s": time.time() - start,
+                }
+                with open(log_path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(wpis) + "\n")
+                raise
+
+        return wrapper
+
+    return dekorator
 
 
 class KontoNieIstnieje(Exception):
     """Wyjatek zglaszany, gdy operacja dotyczy nieistniejacego numeru konta."""
+
     pass
 
 
 class ProcesorNiedostepny(Exception):
     """Wyjatek symulujacy niedostepnosc zewnetrznego procesora platnosci."""
+
     pass
 
 
@@ -71,11 +76,15 @@ class ZewnetrznyProcesor:
             time.sleep(self.opoznienie_s)
         if self._generator.random() < self.prawdopodobienstwo_awarii:
             raise ProcesorNiedostepny("Zewnetrzny procesor platnosci nie odpowiada")
-        return {"status": "zaksiegowano", "numer_referencyjny": f"REF{self.licznik_wywolan:06d}"}
+        return {
+            "status": "zaksiegowano",
+            "numer_referencyjny": f"REF{self.licznik_wywolan:06d}",
+        }
 
 
 class KontoZablokowane(Exception):
     """Wyjatek zglaszany przy probie operacji na zablokowanym koncie."""
+
     pass
 
 
@@ -125,17 +134,17 @@ class BankSystem:
         if numer not in self.konta:
             raise KontoNieIstnieje(f"Konto {numer} nie istnieje")
         return self.konta[numer]
-    
+
     @niezawodnosc_logger()
     def zablokuj_konto(self, numer):
         konto = self._pobierz_konto(numer)
         konto.status = "zablokowane"
-    
+
     @niezawodnosc_logger()
     def odblokuj_konto(self, numer):
         konto = self._pobierz_konto(numer)
         konto.status = "aktywne"
-    
+
     @niezawodnosc_logger()
     def _suma_dzisiejszych_wyplat(self, konto):
         dzis = date.today()
@@ -144,7 +153,7 @@ class BankSystem:
             if data_operacji == dzis and typ in ("wyplata", "przelew_wychodzacy"):
                 suma += kwota
         return suma
-    
+
     @niezawodnosc_logger()
     def wplac(self, numer, kwota):
         konto = self._pobierz_konto(numer)
@@ -156,7 +165,7 @@ class BankSystem:
         konto.saldo += kwota
         konto.dodaj_wpis("wplata", kwota)
         return konto.saldo
-    
+
     @niezawodnosc_logger()
     def wyplac(self, numer, kwota):
         konto = self._pobierz_konto(numer)
@@ -172,7 +181,7 @@ class BankSystem:
         konto.saldo -= kwota
         konto.dodaj_wpis("wyplata", kwota)
         return konto.saldo
-    
+
     @niezawodnosc_logger()
     def przelew(self, numer_z, numer_do, kwota):
         konto_z = self._pobierz_konto(numer_z)
@@ -192,17 +201,21 @@ class BankSystem:
             konto_z.dodaj_wpis("przelew_wychodzacy", kwota)
             konto_do.dodaj_wpis("przelew_przychodzacy", kwota)
         return konto_z.saldo
-    
+
     @niezawodnosc_logger()
     def nalicz_odsetki(self, numer, roczna_stopa_procentowa, miesiace):
         konto = self._pobierz_konto(numer)
-        stopa_miesieczna = Decimal(str(roczna_stopa_procentowa)) / Decimal("12") / Decimal("100")
+        stopa_miesieczna = (
+            Decimal(str(roczna_stopa_procentowa)) / Decimal("12") / Decimal("100")
+        )
         for _ in range(miesiace):
-            odsetki = (konto.saldo * stopa_miesieczna).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            odsetki = (konto.saldo * stopa_miesieczna).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
             konto.saldo += odsetki
             konto.dodaj_wpis("odsetki", odsetki)
         return konto.saldo
-    
+
     @niezawodnosc_logger()
     def historia_w_okresie(self, numer, od, do):
         konto = self._pobierz_konto(numer)
@@ -211,7 +224,7 @@ class BankSystem:
             if od < data_operacji < do:
                 wynik.append((data_operacji, typ, kwota))
         return wynik
-    
+
     @niezawodnosc_logger()
     def wyciag_miesieczny(self, numer, rok, miesiac):
         konto = self._pobierz_konto(numer)
@@ -224,9 +237,11 @@ class BankSystem:
                 elif typ in ("wyplata", "przelew_wychodzacy"):
                     wyplaty += kwota
         return {"wplaty": wplaty, "wyplaty": wyplaty, "saldo_koncowe": konto.saldo}
-    
+
     @niezawodnosc_logger()
-    def przelew_zewnetrzny(self, numer_z, numer_konta_docelowego_zewn, kwota, procesor=None):
+    def przelew_zewnetrzny(
+        self, numer_z, numer_konta_docelowego_zewn, kwota, procesor=None
+    ):
         """
         Przelew na konto spoza systemu (np. do innego banku), realizowany
         przez zewnetrzny procesor platnosci. Implementacja jest celowo
@@ -247,4 +262,3 @@ class BankSystem:
         konto_z.saldo -= kwota
         konto_z.dodaj_wpis("przelew_zewnetrzny", kwota)
         return wynik
-

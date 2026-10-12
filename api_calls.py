@@ -27,8 +27,7 @@ def _tekst(wynik):
         return f"{type(wynik).__name__}: {wynik}"
     if hasattr(wynik, "numer") and hasattr(wynik, "saldo"):
         return (
-            f"Konto {wynik.numer}, saldo={wynik.saldo}, "
-            f"wlasciciel={wynik.wlasciciel!r}"
+            f"Konto {wynik.numer}, saldo={wynik.saldo}, wlasciciel={wynik.wlasciciel!r}"
         )
     return repr(wynik)
 
@@ -228,7 +227,9 @@ def main():
     )
 
     log_path = ROOT / "awarie.jsonl"
-    log_linie = log_path.read_text(encoding="utf-8").splitlines() if log_path.exists() else []
+    log_linie = (
+        log_path.read_text(encoding="utf-8").splitlines() if log_path.exists() else []
+    )
     api_linie = len((ROOT / "API.py").read_text(encoding="utf-8").splitlines())
 
     KOD.mkdir(parents=True, exist_ok=True)
