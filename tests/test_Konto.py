@@ -15,7 +15,12 @@ def setup_module():
     print("Testy zakończone")
 
 
+def test_Konto_dodaj_wpis_z_data(setup_module):
+    konto = setup_module["konto"]
+    konto.dodaj_wpis("wplata", 1000, date(2024, 6, 1))
+    assert konto.historia == [ (date(2024, 6, 1), "wplata", 1000)]
+
 def test_Konto_dodaj_wpis(setup_module):
     konto = setup_module["konto"]
     konto.dodaj_wpis("wplata", 1000)
-    assert konto.historia == [(date.today(), "wplata", 1000)]
+    assert konto.historia == [ (date(2024, 6, 1), "wplata", 1000), (date.today(), "wplata", 1000)]
