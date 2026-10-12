@@ -16,7 +16,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*.test.py"]
 python_functions = ["test_*"]
 addopts = [
-    "--cov=API.py",
+    "--cov=API",
     "--cov-branch",
     "--cov-report=term-missing",
     "--cov-report=html",
