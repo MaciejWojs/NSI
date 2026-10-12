@@ -11,11 +11,12 @@ dependencies = [
 
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*.test.py"]
 python_functions = ["test_*"]
 addopts = [
-    "--cov",
+    "--cov=API.py",
     "--cov-branch",
     "--cov-report=term-missing",
     "--cov-report=html",
