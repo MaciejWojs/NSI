@@ -227,3 +227,7 @@ pyrightconfig.json
 output.txt
 awarie.jsonl
 raporty/
+*.diff
+.gremlins_cache/
+OLD_coverage/
+coverage/
