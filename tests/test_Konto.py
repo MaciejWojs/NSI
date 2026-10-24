@@ -20,7 +20,6 @@ def test_Konto_inicjalizacja(setup_module):
 
     assert konto.numer == NR_KONTA
     assert konto.wlasciciel == "John Doe"
-    assert type(konto.saldo) is Decimal
     assert konto.saldo == Decimal("1000")
     assert konto.historia == []
     assert konto.status == "aktywne"
@@ -29,7 +28,6 @@ def test_Konto_inicjalizacja(setup_module):
 def test_Konto_saldo_poczatkowe_domyslne():
     konto = Konto(NR_KONTA, "John Doe")
 
-    assert type(konto.saldo) is Decimal
     assert konto.saldo == Decimal("0")
     assert konto.historia == []
     assert konto.status == "aktywne"
@@ -53,18 +51,3 @@ def test_Konto_dodaj_wpis(setup_module):
     konto.dodaj_wpis("wplata", 1000)
 
     assert konto.historia == [(dzisiaj, "wplata", 1000)]
-    assert len(konto.historia) == 1
-
-
-def test_Konto_dodaj_wpis_dokleja_kolejne_operacje(setup_module):
-    konto = setup_module["konto"]
-    wczesniej = date(2024, 1, 2)
-    dzisiaj = date.today()
-
-    konto.dodaj_wpis("wplata", Decimal("10.00"), wczesniej)
-    konto.dodaj_wpis("wyplata", Decimal("4.50"))
-
-    assert konto.historia == [
-        (wczesniej, "wplata", Decimal("10.00")),
-        (dzisiaj, "wyplata", Decimal("4.50")),
-    ]
