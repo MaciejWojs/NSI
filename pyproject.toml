@@ -5,6 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "flake8>=7.5.0",
+    "pylint>=4.1.4",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pytest-gremlins>=1.12.2",
