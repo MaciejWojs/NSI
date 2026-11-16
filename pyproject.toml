@@ -8,6 +8,7 @@ dependencies = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pytest-gremlins>=1.12.2",
+    "radon>=6.0.1",
 ]
 
 
