@@ -1,10 +1,15 @@
-on:
-  push:
-    branches:
-      - main
+# Pipeline CI (zajęcia 7).
+# Kolejność: trzy joby testowe startują równolegle po pushu lub pull requeście.
+# Job pokrycia startuje dopiero, gdy wszystkie trzy zakończą się sukcesem:
+# łączy dane coverage.py i kończy się błędem, gdy pokrycie gałęzi API.py spadnie poniżej 80%.
+# Kod wyjścia pytest i coverage nie jest przechwytywany — czerwony wynik zostaje czerwony.
+name: Testy
+
+on: [push, pull_request]
 
 jobs:
-  run-tests:
+  testy-jednostkowe:
+    name: Testy jednostkowe (P2)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -16,10 +21,126 @@ jobs:
       - name: Install project dependencies
         run: uv sync
 
-      - name: Run tests
-        run: uv run pytest
+      - name: Run unit tests
+        env:
+          COVERAGE_FILE: coverage-data/jednostkowe
+        run: |
+          mkdir -p coverage-data
+          uv run pytest \
+            --override-ini="addopts=" \
+            --cov=API \
+            --cov-branch \
+            --cov-report=term \
+            --cov-fail-under=0 \
+            tests/test_Konto.py tests/test_BankSystem.py
 
-      - name: Upload coverage
+      - name: Upload unit coverage data
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-jednostkowe
+          path: coverage-data/jednostkowe
+
+  testy-funkcjonalne:
+    name: Testy funkcjonalne (P3)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+
+      - name: Install project dependencies
+        run: uv sync
+
+      - name: Run functional tests
+        env:
+          COVERAGE_FILE: coverage-data/funkcjonalne
+        run: |
+          mkdir -p coverage-data
+          uv run pytest \
+            --override-ini="addopts=" \
+            --cov=API \
+            --cov-branch \
+            --cov-report=term \
+            --cov-fail-under=0 \
+            tests/functional-black-box
+
+      - name: Upload functional coverage data
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-funkcjonalne
+          path: coverage-data/funkcjonalne
+
+  testy-niefunkcjonalne:
+    name: Testy niefunkcjonalne (P3)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+
+      - name: Install project dependencies
+        run: uv sync
+
+      - name: Run non-functional tests
+        env:
+          COVERAGE_FILE: coverage-data/niefunkcjonalne
+        run: |
+          mkdir -p coverage-data
+          uv run pytest \
+            --override-ini="addopts=" \
+            --cov=API \
+            --cov-branch \
+            --cov-report=term \
+            --cov-fail-under=0 \
+            tests/lab5
+
+      - name: Upload non-functional coverage data
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-niefunkcjonalne
+          path: coverage-data/niefunkcjonalne
+
+  pokrycie:
+    name: Pokrycie kodu
+    needs:
+      - testy-jednostkowe
+      - testy-funkcjonalne
+      - testy-niefunkcjonalne
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+
+      - name: Install project dependencies
+        run: uv sync
+
+      - name: Download coverage data
+        uses: actions/download-artifact@v7
+        with:
+          pattern: coverage-*
+          path: coverage-data
+
+      - name: Combine coverage and enforce threshold
+        run: |
+          uv run coverage combine \
+            coverage-data/coverage-jednostkowe/jednostkowe \
+            coverage-data/coverage-funkcjonalne/funkcjonalne \
+            coverage-data/coverage-niefunkcjonalne/niefunkcjonalne
+          uv run coverage report --fail-under=80
+          uv run coverage html
+          uv run coverage xml
+
+      - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v7
         with:
